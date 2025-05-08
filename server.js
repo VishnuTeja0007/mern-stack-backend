@@ -12,20 +12,39 @@ dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
-const io = socketio(server, {
-  cors: {
-    origin: ["http://localhost:5173", "https://casual-chat-app.netlify.app"],
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    credentials: true,
-  },
-});
-//middlewares
-app.use(cors({
+
+// CORS configuration
+const corsOptions = {
   origin: ["http://localhost:5173", "https://casual-chat-app.netlify.app"],
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true
-}));
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+  preflightContinue: false,
+  optionsSuccessStatus: 204
+};
+
+// Apply CORS middleware
+app.use(cors(corsOptions));
+
+// Socket.IO configuration
+const io = socketio(server, {
+  cors: corsOptions
+});
+
 app.use(express.json());
+
+// Add headers middleware
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', 'https://casual-chat-app.netlify.app');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+  next();
+});
+
 //connect to db
 mongoose
   .connect(process.env.MONGO_URL)
@@ -34,8 +53,8 @@ mongoose
 
 //Initialize
 socketIo(io);
-//our routes
 
+//our routes
 app.use("/api/users", userRouter);
 app.use("/api/groups", groupRouter);
 app.use("/api/messages", messageRouter);
